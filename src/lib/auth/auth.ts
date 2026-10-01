@@ -158,6 +158,8 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_APP_URL,
     "https://actionary.baari.dev",
+    "https://actionary.onrender.com",
+    "https://*.onrender.com",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.13:3000",
