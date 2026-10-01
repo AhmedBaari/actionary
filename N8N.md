@@ -15,3 +15,4 @@ Events sent from SastraNet to n8n include:
 
 ## Security
 Every payload includes an `X-SastraNet-Signature` header matched against `N8N_WEBHOOK_SECRET`.
+ 
