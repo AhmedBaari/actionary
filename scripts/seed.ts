@@ -1,4 +1,5 @@
 import { MongoClient, ObjectId } from "mongodb";
+import { createHash } from "crypto";
 import * as dotenv from "dotenv";
 import { subDays, addDays } from "date-fns";
 
@@ -29,6 +30,9 @@ async function runSeed() {
   await db.collection("feedbackCycles").deleteMany({});
   await db.collection("feedbackResponses").deleteMany({});
   await db.collection("auditEvents").deleteMany({});
+  await db.collection("votes").deleteMany({});
+  await db.collection("voteParticipation").deleteMany({});
+  await db.collection("anonymousBallots").deleteMany({});
 
   const now = new Date();
 
@@ -413,7 +417,184 @@ async function runSeed() {
     });
   }
 
-  console.log("Successfully seeded SastraNet workspace with team, pods, sprint, tasks, ideas, and feedback!");
+  // ─── 8. Seed Votes ───────────────────────────────────────────
+  console.log("Seeding votes, participation, and anonymous ballots...");
+
+  // Vote 1: OPEN Multiple Choice (3 votes => voter names visible!)
+  const vote1Id = new ObjectId();
+  await db.collection("votes").insertOne({
+    _id: vote1Id,
+    slug: "database-telemetry-warehouse",
+    title: "Should we adopt PostgreSQL for the telemetry warehouse?",
+    description: "Evaluating primary storage engines for high-volume telemetry ingestion and aggregations.",
+    mode: "MULTIPLE_CHOICE",
+    options: [
+      { id: "opt_pg", text: "PostgreSQL" },
+      { id: "opt_mongo", text: "MongoDB Time Series" },
+      { id: "opt_clickhouse", text: "ClickHouse" },
+      { id: "opt_mysql", text: "MySQL" },
+    ],
+    createdBy: userMap["Abhinav"].toString(),
+    createdAt: subDays(now, 2),
+    closesAt: addDays(now, 3),
+    status: "OPEN",
+    closeReason: null,
+    updatedAt: subDays(now, 2),
+  });
+
+  const voters1 = [userMap["Abhinav"].toString(), userMap["Daya"].toString(), userMap["Akash"].toString()];
+  for (const vId of voters1) {
+    await db.collection("voteParticipation").insertOne({
+      voteId: vote1Id.toString(),
+      memberId: vId,
+      votedAt: subDays(now, 1),
+    });
+  }
+
+  await db.collection("anonymousBallots").insertMany([
+    {
+      _id: new ObjectId(),
+      voteId: vote1Id.toString(),
+      mode: "MULTIPLE_CHOICE",
+      payload: { selectedOptionId: "opt_pg" },
+      opinion: "Mature tooling, relational integrity, and TimescaleDB extension compatibility.",
+      receiptHash: createHash("sha256").update("rcpt_demo_pg_001").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote1Id.toString(),
+      mode: "MULTIPLE_CHOICE",
+      payload: { selectedOptionId: "opt_pg" },
+      opinion: "We already have strong SQL experience across the backend pods.",
+      receiptHash: createHash("sha256").update("rcpt_demo_pg_002").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote1Id.toString(),
+      mode: "MULTIPLE_CHOICE",
+      payload: { selectedOptionId: "opt_clickhouse" },
+      opinion: "Unmatched column-oriented analytical throughput for columnar logs.",
+      receiptHash: createHash("sha256").update("rcpt_demo_ch_003").digest("hex"),
+    },
+  ]);
+
+  // Vote 2: CLOSED Ranked Choice
+  const vote2Id = new ObjectId();
+  await db.collection("votes").insertOne({
+    _id: vote2Id,
+    slug: "messaging-infrastructure-choice",
+    title: "Architecture Decision: Primary Messaging Infrastructure",
+    description: "Determining the core queue/streaming broker for distributed workspace events.",
+    mode: "RANKED_CHOICE",
+    options: [
+      { id: "opt_redis", text: "Redis Streams" },
+      { id: "opt_rabbit", text: "RabbitMQ" },
+      { id: "opt_kafka", text: "Apache Kafka" },
+      { id: "opt_sqs", text: "AWS SQS" },
+    ],
+    createdBy: userMap["Siddharth"].toString(),
+    createdAt: subDays(now, 5),
+    closesAt: subDays(now, 1),
+    status: "CLOSED",
+    closeReason: "MANUAL",
+    updatedAt: subDays(now, 1),
+  });
+
+  const voters2 = [userMap["Siddharth"].toString(), userMap["Punith"].toString(), userMap["Vinay"].toString(), userMap["Gautam"].toString()];
+  for (const vId of voters2) {
+    await db.collection("voteParticipation").insertOne({
+      voteId: vote2Id.toString(),
+      memberId: vId,
+      votedAt: subDays(now, 3),
+    });
+  }
+
+  await db.collection("anonymousBallots").insertMany([
+    {
+      _id: new ObjectId(),
+      voteId: vote2Id.toString(),
+      mode: "RANKED_CHOICE",
+      payload: { rankedOptionIds: ["opt_redis", "opt_rabbit", "opt_kafka", "opt_sqs"] },
+      opinion: "Redis fits our current deployment footprint with minimal operational overhead.",
+      receiptHash: createHash("sha256").update("rcpt_demo_ranked_001").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote2Id.toString(),
+      mode: "RANKED_CHOICE",
+      payload: { rankedOptionIds: ["opt_redis", "opt_sqs", "opt_rabbit", "opt_kafka"] },
+      opinion: null,
+      receiptHash: createHash("sha256").update("rcpt_demo_ranked_002").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote2Id.toString(),
+      mode: "RANKED_CHOICE",
+      payload: { rankedOptionIds: ["opt_rabbit", "opt_redis", "opt_kafka", "opt_sqs"] },
+      opinion: "RabbitMQ AMQP protocol is robust for complex routing keys.",
+      receiptHash: createHash("sha256").update("rcpt_demo_ranked_003").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote2Id.toString(),
+      mode: "RANKED_CHOICE",
+      payload: { rankedOptionIds: ["opt_redis", "opt_kafka", "opt_rabbit", "opt_sqs"] },
+      opinion: null,
+      receiptHash: createHash("sha256").update("rcpt_demo_ranked_004").digest("hex"),
+    },
+  ]);
+
+  // Vote 3: OPEN Approval Vote (2 votes => voter names HIDDEN!)
+  const vote3Id = new ObjectId();
+  await db.collection("votes").insertOne({
+    _id: vote3Id,
+    slug: "frontend-monitoring-tools",
+    title: "Which front-end monitoring tools should we integrate?",
+    description: "Select all acceptable tools for client-side error telemetry and performance traces.",
+    mode: "APPROVAL",
+    options: [
+      { id: "opt_sentry", text: "Sentry" },
+      { id: "opt_posthog", text: "PostHog" },
+      { id: "opt_datadog", text: "Datadog" },
+      { id: "opt_logrocket", text: "LogRocket" },
+    ],
+    createdBy: userMap["Daya"].toString(),
+    createdAt: subDays(now, 1),
+    closesAt: addDays(now, 5),
+    status: "OPEN",
+    closeReason: null,
+    updatedAt: subDays(now, 1),
+  });
+
+  const voters3 = [userMap["Daya"].toString(), userMap["Punith"].toString()];
+  for (const vId of voters3) {
+    await db.collection("voteParticipation").insertOne({
+      voteId: vote3Id.toString(),
+      memberId: vId,
+      votedAt: subDays(now, 1),
+    });
+  }
+
+  await db.collection("anonymousBallots").insertMany([
+    {
+      _id: new ObjectId(),
+      voteId: vote3Id.toString(),
+      mode: "APPROVAL",
+      payload: { selectedOptionIds: ["opt_sentry", "opt_posthog"] },
+      opinion: "Sentry for crash reports and PostHog for feature flag telemetry.",
+      receiptHash: createHash("sha256").update("rcpt_demo_appr_001").digest("hex"),
+    },
+    {
+      _id: new ObjectId(),
+      voteId: vote3Id.toString(),
+      mode: "APPROVAL",
+      payload: { selectedOptionIds: ["opt_sentry", "opt_datadog"] },
+      opinion: null,
+      receiptHash: createHash("sha256").update("rcpt_demo_appr_002").digest("hex"),
+    },
+  ]);
+
+  console.log("Successfully seeded SastraNet workspace with team, pods, sprint, tasks, ideas, feedback, and votes!");
   await client.close();
 }
 

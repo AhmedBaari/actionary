@@ -39,12 +39,16 @@ export async function setupIndexes() {
     ]);
 
     // ─── sprints ─────────────────────────────────────────────────
-    const sprints = db.collection("sprints");
-    await sprints.createIndexes([
-        { key: { status: 1 }, name: "sprints_status" },
-        { key: { number: 1 }, name: "sprints_number", unique: true },
-        { key: { startDate: -1 }, name: "sprints_start_date" },
-    ]);
+    try {
+        const sprints = db.collection("sprints");
+        await sprints.createIndexes([
+            { key: { status: 1 }, name: "sprints_status" },
+            { key: { number: 1 }, name: "sprints_number", unique: true, sparse: true },
+            { key: { startDate: -1 }, name: "sprints_start_date" },
+        ]);
+    } catch (err) {
+        console.warn("[Indexes] Sprints index warning:", err);
+    }
 
     // ─── auditEvents ─────────────────────────────────────────────
     const audit = db.collection("auditEvents");
@@ -113,6 +117,40 @@ export async function setupIndexes() {
         },
         { key: { cycleId: 1 }, name: "responses_cycle" },
         { key: { reviewerId: 1 }, name: "responses_reviewer" },
+    ]);
+
+    // ─── votes ───────────────────────────────────────────────────
+    const votes = db.collection("votes");
+    await votes.createIndexes([
+        { key: { slug: 1 }, name: "votes_slug", unique: true },
+        { key: { status: 1, closesAt: 1 }, name: "votes_status_closes_at" },
+        { key: { createdAt: -1 }, name: "votes_created_at" },
+        { key: { createdBy: 1 }, name: "votes_created_by" },
+    ]);
+
+    // ─── voteParticipation ───────────────────────────────────────
+    // Critical privacy boundary: stores only participation, strictly isolated from ballot
+    const participation = db.collection("voteParticipation");
+    await participation.createIndexes([
+        {
+            key: { voteId: 1, memberId: 1 },
+            name: "participation_vote_member_unique",
+            unique: true,
+        },
+        { key: { voteId: 1 }, name: "participation_vote" },
+        { key: { memberId: 1 }, name: "participation_member" },
+    ]);
+
+    // ─── anonymousBallots ─────────────────────────────────────────
+    // Critical privacy boundary: stores anonymous payload, strictly isolated from member
+    const anonymousBallots = db.collection("anonymousBallots");
+    await anonymousBallots.createIndexes([
+        { key: { voteId: 1 }, name: "ballots_vote" },
+        {
+            key: { receiptHash: 1 },
+            name: "ballots_receipt_hash_unique",
+            unique: true,
+        },
     ]);
 
     console.log("✓ MongoDB indexes created successfully");

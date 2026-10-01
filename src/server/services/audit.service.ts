@@ -4,7 +4,7 @@ import { createAuditEvent, getAuditEventsForEntity } from "@/server/repositories
 import type { AuditAction, AuditEventView } from "@/types";
 
 export interface LogAuditParams {
-  entityType: "task" | "idea" | "sprint" | "pod" | "feedback" | "user" | "allowlist";
+  entityType: "task" | "idea" | "sprint" | "pod" | "feedback" | "user" | "allowlist" | "vote";
   entityId: string;
   actorId?: string | null;
   actorName?: string | null;
@@ -30,7 +30,7 @@ export async function logAudit(params: LogAuditParams) {
 }
 
 export async function getEntityAuditStream(
-  entityType: "task" | "idea" | "sprint" | "pod" | "feedback" | "user" | "allowlist",
+  entityType: "task" | "idea" | "sprint" | "pod" | "feedback" | "user" | "allowlist" | "vote",
   entityId: string
 ): Promise<AuditEventView[]> {
   try {

@@ -30,6 +30,9 @@ export type AuditAction =
   | "task.created"
   | "task.status_changed"
   | "task.severity_changed"
+  | "task.title_changed"
+  | "task.description_changed"
+  | "task.owner_changed"
   | "task.assigned"
   | "task.checklist_updated"
   | "task.deadline_changed"
@@ -56,7 +59,12 @@ export type AuditAction =
   | "user.created"
   | "user.role_changed"
   | "allowlist.entry_added"
-  | "allowlist.entry_removed";
+  | "allowlist.entry_removed"
+  | "vote.created"
+  | "vote.closed"
+  | "vote.cancelled"
+  | "vote.updated"
+  | "vote.cast";
 
 // ─── Checklist ──────────────────────────────────────────────
 
@@ -165,7 +173,7 @@ export interface Idea {
 
 export interface AuditEvent {
   _id: string;
-  entityType: "task" | "sprint" | "idea" | "pod" | "feedback" | "user" | "allowlist";
+  entityType: "task" | "sprint" | "idea" | "pod" | "feedback" | "user" | "allowlist" | "vote";
   entityId: string;
   actorId: string | null;
   actorName: string | null; // Denormalized for history readability
@@ -380,3 +388,6 @@ export interface N8nEvent<T = Record<string, unknown>> {
 export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string; code?: string };
+
+// ─── Voting Types ───────────────────────────────────────────
+export * from "./voting";

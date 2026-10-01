@@ -190,7 +190,7 @@ export function WorkspaceBoard({ tasks, backlog, completed, users, stats }: Boar
             Sastra<span className="text-[var(--color-brand)]">Net</span>
           </Link>
           <div className="flex items-center gap-5 text-sm font-semibold text-[var(--color-text-secondary)]">
-            {[{ href: "/", label: "Board" }, { href: "/pods", label: "Pods" }, { href: "/ideas", label: "Ideas" }, { href: "/feedback", label: "Feedback" }].map(({ href, label }) => (
+            {[{ href: "/", label: "Board" }, { href: "/pods", label: "Pods" }, { href: "/ideas", label: "Ideas" }, { href: "/feedback", label: "Feedback" }, { href: "/voting", label: "Voting" }].map(({ href, label }) => (
               <Link key={href} className="transition hover:text-[var(--color-text-primary)]" href={href}>
                 {label}
               </Link>

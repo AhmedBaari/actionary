@@ -48,6 +48,12 @@ export default async function IdeasPage() {
           >
             Feedback
           </Link>
+          <Link
+            className="transition hover:text-[var(--color-text-primary)]"
+            href="/voting"
+          >
+            Voting
+          </Link>
           <div className="pl-2 border-l border-[var(--color-border)]">
             <ThemeToggle />
           </div>
