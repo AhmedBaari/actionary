@@ -3,10 +3,12 @@ import { getDb } from "@/lib/db/client";
 import type { User, UserRole, AllowedUser } from "@/types";
 
 export async function getUserById(id: string): Promise<User | null> {
+  if (!id) return null;
   const db = await getDb();
+  const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { _id: id };
   const doc = await db
     .collection("user")
-    .findOne({ _id: new ObjectId(id) });
+    .findOne(query as any);
   return (doc as unknown) as User | null;
 }
 

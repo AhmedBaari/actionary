@@ -168,6 +168,56 @@ export async function toggleTaskChecklistItem(params: {
   return { success: true, checklist: updatedChecklist };
 }
 
+export async function updateTaskDetailsWithAudit(params: {
+  taskId: string;
+  fields: {
+    title?: string;
+    description?: string;
+    severity?: TaskSeverity;
+    primaryOwnerId?: string | null;
+    assigneeIds?: string[];
+    deadline?: Date | null;
+  };
+  actorId?: string | null;
+  actorName?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  const task = await getTaskById(params.taskId);
+  if (!task) return { success: false, error: "Task not found" };
+
+  const fields = { ...params.fields };
+  if (fields.title !== undefined) fields.title = fields.title.trim();
+  if (fields.title !== undefined && !fields.title) return { success: false, error: "A task needs a title" };
+  if (fields.primaryOwnerId !== undefined && fields.assigneeIds === undefined) {
+    fields.assigneeIds = fields.primaryOwnerId ? [fields.primaryOwnerId] : [];
+  }
+
+  const updated = await updateTaskFields(params.taskId, fields);
+  if (!updated.modified) return { success: false, error: "Task could not be updated" };
+
+  const metadata = { displayNumber: task.displayNumber };
+  const events: Array<{ action: Parameters<typeof logAudit>[0]["action"]; metadata: Record<string, unknown> }> = [];
+  if (fields.title !== undefined && fields.title !== task.title) {
+    events.push({ action: "task.title_changed", metadata: { ...metadata, from: task.title, to: fields.title } });
+  }
+  if (fields.description !== undefined && fields.description !== (task.description ?? "")) {
+    events.push({ action: "task.description_changed", metadata });
+  }
+  if (fields.severity !== undefined && fields.severity !== task.severity) {
+    events.push({ action: "task.severity_changed", metadata: { ...metadata, from: task.severity, to: fields.severity } });
+  }
+  if (fields.primaryOwnerId !== undefined && fields.primaryOwnerId !== task.primaryOwnerId) {
+    events.push({ action: "task.owner_changed", metadata: { ...metadata, fromOwnerId: task.primaryOwnerId, toOwnerId: fields.primaryOwnerId } });
+  }
+  if (fields.deadline !== undefined && (fields.deadline?.getTime() ?? null) !== (task.deadline?.getTime() ?? null)) {
+    events.push({ action: "task.deadline_changed", metadata: { ...metadata, from: task.deadline?.toISOString() ?? null, to: fields.deadline?.toISOString() ?? null } });
+  }
+  await Promise.all(events.map(({ action, metadata: eventMetadata }) => logAudit({
+    entityType: "task", entityId: params.taskId, actorId: params.actorId,
+    actorName: params.actorName, action, metadata: eventMetadata,
+  })));
+  return { success: true };
+}
+
 export async function removeTask(params: {
   taskId: string;
   actorId?: string | null;

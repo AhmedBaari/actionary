@@ -38,11 +38,15 @@ export default function LoginPage() {
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as {
           message?: string;
-          error?: { message?: string };
+          error?: string | { message?: string };
         } | null;
+        const errorMessage =
+          typeof body?.error === "string"
+            ? body.error
+            : body?.error?.message;
         throw new Error(
           body?.message ??
-            body?.error?.message ??
+            errorMessage ??
             "Unable to sign in. Check your email and password."
         );
       }

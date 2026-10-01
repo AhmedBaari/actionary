@@ -7,10 +7,11 @@ import {
   moveTaskToSprint,
   toggleTaskChecklistItem,
   removeTask,
+  updateTaskDetailsWithAudit,
 } from "@/server/services/task.service";
-import { updateTaskFields } from "@/server/repositories/tasks.repository";
 import type { TaskSeverity, TaskStatus, ChecklistItem } from "@/types";
 import { auditActor, requireCurrentUser } from "@/lib/auth/session";
+import { getEntityAuditStream } from "@/server/services/audit.service";
 
 export async function actionCreateTask(formData: {
   title: string;
@@ -114,20 +115,30 @@ export async function actionUpdateTaskDetails(params: {
     description?: string;
     severity?: TaskSeverity;
     primaryOwnerId?: string | null;
+    assigneeIds?: string[];
     deadline?: string | null;
     checklist?: ChecklistItem[];
   };
 }) {
   try {
-    await requireCurrentUser();
-    const updateData: any = { ...params.fields };
-    if (params.fields.deadline !== undefined) {
-      updateData.deadline = params.fields.deadline ? new Date(params.fields.deadline) : null;
-    }
-    await updateTaskFields(params.taskId, updateData);
+    const actor = auditActor(await requireCurrentUser());
+    const result = await updateTaskDetailsWithAudit({
+      taskId: params.taskId,
+      fields: {
+        ...params.fields,
+        deadline: params.fields.deadline === undefined ? undefined : params.fields.deadline ? new Date(params.fields.deadline) : null,
+      },
+      ...actor,
+    });
+    if (!result.success) return result;
     revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update task details" };
   }
+}
+
+export async function actionGetTaskAudit(taskId: string) {
+  await requireCurrentUser();
+  return getEntityAuditStream("task", taskId);
 }

@@ -9,6 +9,7 @@ import {
   getGlobalBoardStats,
 } from "@/server/repositories/tasks.repository";
 import { getAllUsers } from "@/server/repositories/users.repository";
+import { getRecentAuditEventsForEntities } from "@/server/repositories/audit.repository";
 
 export default async function Home() {
   try {
@@ -24,6 +25,10 @@ export default async function Home() {
     getGlobalBoardStats(),
     getAllUsers(),
   ]);
+  const activity = await getRecentAuditEventsForEntities(
+    "task",
+    [...tasks, ...backlog, ...completed].map((task) => task._id.toString())
+  );
 
   return (
     <WorkspaceBoard
@@ -31,6 +36,11 @@ export default async function Home() {
       completed={completed.map(serializeTask)}
       stats={stats}
       tasks={tasks.map(serializeTask)}
+      activityByTask={Object.fromEntries([...activity].map(([taskId, events]) => [taskId, events.map((event) => ({
+        id: event._id.toString(), entityType: event.entityType, entityId: event.entityId,
+        actorId: event.actorId, actorName: event.actorName, action: event.action,
+        metadata: event.metadata, createdAt: event.createdAt.toISOString(),
+      }))]))}
       users={users.map((user) => ({
         id: user._id.toString(),
         email: user.email,

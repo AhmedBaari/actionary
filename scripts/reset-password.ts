@@ -11,16 +11,23 @@ if (!uri) {
   process.exit(1);
 }
 
-const targetEmail = (process.argv[2] || "ahmed4baari@gmail.com").toLowerCase().trim();
-const newPassword = process.argv[3] || "Baari@2026";
+const targetEmail = process.argv[2]?.toLowerCase().trim();
+const newPassword = process.argv[3];
 const role = process.argv[4] || "ADMIN";
+
+if (!targetEmail || !newPassword) {
+  console.error(
+    "Usage: npm run reset-password -- <email> <new-password> [role]"
+  );
+  process.exit(1);
+}
 
 async function main() {
   const client = new MongoClient(uri!);
   await client.connect();
   const db = client.db("sastranet");
 
-  console.log(`Connecting to MongoDB... Target: ${targetEmail}`);
+  console.log("Connecting to MongoDB...");
 
   // 1. Ensure user in allowedUsers
   await db.collection("allowedUsers").updateOne(
@@ -102,12 +109,7 @@ async function main() {
     console.log(`✓ Created new credential account entry with hashed password.`);
   }
 
-  console.log(`\n=========================================`);
-  console.log(`Account Ready to Sign In:`);
-  console.log(`Email:    ${targetEmail}`);
-  console.log(`Password: ${newPassword}`);
-  console.log(`Role:     ${role}`);
-  console.log(`=========================================\n`);
+  console.log(`Account ready to sign in with the assigned ${role} role.`);
 
   await client.close();
 }

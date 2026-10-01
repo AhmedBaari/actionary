@@ -55,8 +55,6 @@ export async function promoteIdeaToTask(params: {
     title: idea.title,
     description: idea.description,
     severity: params.severity ?? "RANDOM_IDEA",
-    sprintId: params.sprintId ?? null,
-    createdFrom: "IDEA",
     sourceIdeaId: params.ideaId,
     actorId: params.actorId,
     actorName: params.actorName,

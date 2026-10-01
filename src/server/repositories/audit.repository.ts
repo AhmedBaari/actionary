@@ -43,6 +43,26 @@ export async function getAuditEventsForEntity(
   return (docs as unknown) as AuditEvent[];
 }
 
+/** Recent events keyed by task. Used for compact board activity without N+1 queries. */
+export async function getRecentAuditEventsForEntities(
+  entityType: AuditEvent["entityType"],
+  entityIds: string[],
+  perEntity = 2
+): Promise<Map<string, AuditEvent[]>> {
+  if (entityIds.length === 0) return new Map();
+  const db = await getDb();
+  const events = await db.collection("auditEvents").aggregate([
+    { $match: { entityType, entityId: { $in: entityIds } } },
+    { $sort: { createdAt: -1 } },
+    { $group: { _id: "$entityId", events: { $push: "$$ROOT" } } },
+    { $project: { events: { $slice: ["$events", perEntity] } } },
+  ]).toArray();
+  return new Map(events.map((entry) => [
+    String(entry._id),
+    entry.events as unknown as AuditEvent[],
+  ]));
+}
+
 export async function getRecentAuditEvents(limit = 100): Promise<AuditEvent[]> {
   const db = await getDb();
   const docs = await db
