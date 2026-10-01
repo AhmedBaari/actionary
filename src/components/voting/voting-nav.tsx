@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SASTRANetLogo } from "@/components/SASTRANetLogo";
 
 export function VotingNav() {
   const pathname = usePathname();
@@ -21,7 +22,7 @@ export function VotingNav() {
         className="font-[family-name:var(--font-outfit)] text-xl font-bold tracking-tight text-[var(--color-text-primary)]"
         href="/"
       >
-        Sastra<span className="text-[var(--color-brand)]">Net</span>
+        <SASTRANetLogo size={30} />
       </Link>
       <div className="flex items-center gap-5 text-sm font-semibold text-[var(--color-text-secondary)]">
         {links.map(({ href, label }) => {

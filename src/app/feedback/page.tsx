@@ -7,6 +7,7 @@ import {
 } from "@/server/repositories/feedback.repository";
 import { getAllUsers } from "@/server/repositories/users.repository";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SASTRANetLogo } from "@/components/SASTRANetLogo";
 
 export default async function FeedbackPage() {
   try {
@@ -35,7 +36,7 @@ export default async function FeedbackPage() {
           className="font-[family-name:var(--font-outfit)] text-xl font-bold tracking-tight text-[var(--color-text-primary)]"
           href="/"
         >
-          Sastra<span className="text-[var(--color-brand)]">Net</span>
+          <SASTRANetLogo size={30} />
         </Link>
         <div className="flex items-center gap-5 text-sm font-semibold text-[var(--color-text-secondary)]">
           <Link

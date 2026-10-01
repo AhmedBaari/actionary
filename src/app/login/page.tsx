@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SASTRANetLogo } from "@/components/SASTRANetLogo";
 
 function getCallbackUrl() {
   if (typeof window === "undefined") return "/";
@@ -70,9 +71,7 @@ export default function LoginPage() {
 
       <section className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-sm transition-colors sm:p-10">
         <div className="mb-10">
-          <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-brand)]">
-            SastraNet
-          </p>
+          <SASTRANetLogo className="mb-5 text-[var(--color-brand)]" size={42} />
           <h1 className="font-[family-name:var(--font-outfit)] text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
             Welcome back
           </h1>

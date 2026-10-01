@@ -11,6 +11,26 @@ import {
 import { getAllUsers } from "@/server/repositories/users.repository";
 import { getRecentAuditEventsForEntities } from "@/server/repositories/audit.repository";
 
+function serializePlainValue(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return value.map(serializePlainValue);
+  if (value && typeof value === "object") {
+    const bsonId = value as { toHexString?: () => string };
+    if (typeof bsonId.toHexString === "function") {
+      return bsonId.toHexString();
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [
+        key,
+        serializePlainValue(nestedValue),
+      ])
+    );
+  }
+  return value;
+}
+
 export default async function Home() {
   try {
     await requireCurrentUser();
@@ -39,7 +59,8 @@ export default async function Home() {
       activityByTask={Object.fromEntries([...activity].map(([taskId, events]) => [taskId, events.map((event) => ({
         id: event._id.toString(), entityType: event.entityType, entityId: event.entityId,
         actorId: event.actorId, actorName: event.actorName, action: event.action,
-        metadata: event.metadata, createdAt: event.createdAt.toISOString(),
+        metadata: serializePlainValue(event.metadata) as Record<string, unknown>,
+        createdAt: event.createdAt.toISOString(),
       }))]))}
       users={users.map((user) => ({
         id: user._id.toString(),

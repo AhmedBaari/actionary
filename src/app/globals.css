@@ -1,6 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@font-face {
+  font-family: "TAN Headline";
+  src: url("/TANHEADLINE-Regular.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
 :root {
   /* Canvas & Background */
   --color-bone: #f5f1ed;
@@ -140,6 +148,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
   border-color: var(--color-border);
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+.sastranet-wordmark {
+  display: inline-flex;
+  align-items: center;
+  font-family: "TAN Headline", serif;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  vertical-align: middle;
+  transform: translateY(0.08em);
 }
 
 @supports (font-size: clamp(1rem, 1cqw, 2rem)) {
