@@ -1,0 +1,170 @@
+Created At: 2026-09-13T12:01:03+05:30
+Completed At: 2026-09-13T12:01:03+05:30
+File Path: `file:///d:/SASTRANET/sastranet-workspace/src/index.css`
+Total Lines: 162
+Total Bytes: 5100
+Showing lines 1 to 162
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: @import "tailwindcss";
+2: @import "tw-animate-css";
+3: 
+4: @custom-variant dark (&:is(.dark *));
+5: 
+6: @theme inline {
+7:   --radius-sm: calc(var(--radius) - 4px);
+8:   --radius-md: calc(var(--radius) - 2px);
+9:   --radius-lg: var(--radius);
+10:   --radius-xl: calc(var(--radius) + 4px);
+11:   --color-background: var(--background);
+12:   --color-foreground: var(--foreground);
+13:   --color-card: var(--card);
+14:   --color-card-foreground: var(--card-foreground);
+15:   --color-popover: var(--popover);
+16:   --color-popover-foreground: var(--popover-foreground);
+17:   --color-primary: var(--primary);
+18:   --color-primary-foreground: var(--primary-foreground);
+19:   --color-secondary: var(--secondary);
+20:   --color-secondary-foreground: var(--secondary-foreground);
+21:   --color-muted: var(--muted);
+22:   --color-muted-foreground: var(--muted-foreground);
+23:   --color-accent: var(--accent);
+24:   --color-accent-foreground: var(--accent-foreground);
+25:   --color-destructive: var(--destructive);
+26:   --color-destructive-foreground: var(--destructive-foreground);
+27:   --color-border: var(--border);
+28:   --color-input: var(--input);
+29:   --color-ring: var(--ring);
+30:   --color-brand: var(--brand);
+31:   --color-canvas: var(--canvas);
+32:   --color-surface: var(--surface);
+33:   --color-ink: var(--ink);
+34:   --color-ink-muted: var(--ink-muted);
+35: }
+36: 
+37: /* SastraNet Design Tokens */
+38: :root {
+39:   --radius: 0.75rem;
+40: 
+41:   /* Brand */
+42:   --brand: oklch(0.58 0.21 32);
+43:   --brand-foreground: oklch(0.98 0 0);
+44: 
+45:   /* Canvas — warm bone/sand */
+46:   --canvas: oklch(0.97 0.008 80);
+47: 
+48:   /* Surfaces */
+49:   --surface: oklch(1 0 0);
+50: 
+51:   /* Typography */
+52:   --ink: oklch(0.14 0.01 250);
+53:   --ink-muted: oklch(0.50 0.01 250);
+54: 
+55:   /* System tokens */
+56:   --background: oklch(0.97 0.008 80);
+57:   --foreground: oklch(0.14 0.01 250);
+58:   --card: oklch(1 0 0);
+59:   --card-foreground: oklch(0.14 0.01 250);
+60:   --popover: oklch(1 0 0);
+61:   --popover-foreground: oklch(0.14 0.01 250);
+62:   --primary: oklch(0.58 0.21 32);
+63:   --primary-foreground: oklch(0.98 0 0);
+64:   --secondary: oklch(0.94 0.006 80);
+65:   --secondary-foreground: oklch(0.30 0.01 250);
+66:   --muted: oklch(0.94 0.006 80);
+67:   --muted-foreground: oklch(0.52 0.01 250);
+68:   --accent: oklch(0.94 0.006 80);
+69:   --accent-foreground: oklch(0.14 0.01 250);
+70:   --destructive: oklch(0.577 0.245 27.325);
+71:   --destructive-foreground: oklch(0.985 0 0);
+72:   --border: oklch(0.88 0.008 80);
+73:   --input: oklch(0.88 0.008 80);
+74:   --ring: oklch(0.58 0.21 32);
+75:   --sidebar: oklch(0.96 0.008 80);
+76:   --sidebar-foreground: oklch(0.14 0.01 250);
+77:   --sidebar-primary: oklch(0.58 0.21 32);
+78:   --sidebar-primary-foreground: oklch(0.98 0 0);
+79:   --sidebar-accent: oklch(0.91 0.008 80);
+80:   --sidebar-accent-foreground: oklch(0.14 0.01 250);
+81:   --sidebar-border: oklch(0.88 0.008 80);
+82:   --sidebar-ring: oklch(0.58 0.21 32);
+83: }
+84: 
+85: .dark {
+86:   --canvas: oklch(0.12 0.01 250);
+87:   --surface: oklch(0.17 0.01 250);
+88:   --ink: oklch(0.94 0 0);
+89:   --ink-muted: oklch(0.62 0.01 250);
+90: 
+91:   --background: oklch(0.12 0.01 250);
+92:   --foreground: oklch(0.94 0 0);
+93:   --card: oklch(0.17 0.01 250);
+94:   --card-foreground: oklch(0.94 0 0);
+95:   --popover: oklch(0.20 0.01 250);
+96:   --popover-foreground: oklch(0.94 0 0);
+97:   --primary: oklch(0.68 0.21 32);
+98:   --primary-foreground: oklch(0.98 0 0);
+99:   --secondary: oklch(0.22 0.01 250);
+100:   --secondary-foreground: oklch(0.94 0 0);
+101:   --muted: oklch(0.22 0.01 250);
+102:   --muted-foreground: oklch(0.62 0.01 250);
+103:   --accent: oklch(0.25 0.01 250);
+104:   --accent-foreground: oklch(0.94 0 0);
+105:   --destructive: oklch(0.65 0.21 27);
+106:   --destructive-foreground: oklch(0.985 0 0);
+107:   --border: oklch(1 0 0 / 10%);
+108:   --input: oklch(1 0 0 / 12%);
+109:   --ring: oklch(0.68 0.21 32);
+110:   --sidebar: oklch(0.15 0.01 250);
+111:   --sidebar-foreground: oklch(0.94 0 0);
+112:   --sidebar-primary: oklch(0.68 0.21 32);
+113:   --sidebar-primary-foreground: oklch(0.985 0 0);
+114:   --sidebar-accent: oklch(0.20 0.01 250);
+115:   --sidebar-accent-foreground: oklch(0.94 0 0);
+116:   --sidebar-border: oklch(1 0 0 / 10%);
+117:   --sidebar-ring: oklch(0.68 0.21 32);
+118: }
+119: 
+120: @layer base {
+121:   * {
+122:     @apply border-border;
+123:   }
+124:   body {
+125:     @apply bg-background text-foreground;
+126:     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+127:   }
+128:   h1, h2, h3 {
+129:     font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+130:   }
+131:   .font-mono, code, kbd, pre {
+132:     font-family: 'JetBrains Mono', 'Fira Code', monospace;
+133:   }
+134: }
+135: 
+136: /* Custom scrollbar */
+137: ::-webkit-scrollbar { width: 6px; height: 6px; }
+138: ::-webkit-scrollbar-track { background: transparent; }
+139: ::-webkit-scrollbar-thumb { background: oklch(0.75 0 0 / 0.4); border-radius: 999px; }
+140: ::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0 0 / 0.6); }
+141: 
+142: /* Hide scrollbar for horizontal scroll areas */
+143: .scrollbar-hide::-webkit-scrollbar { display: none; }
+144: .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+145: 
+146: /* Brand color utility */
+147: .text-brand { color: var(--brand); }
+148: .bg-brand { background-color: var(--brand); }
+149: .border-brand { border-color: var(--brand); }
+150: 
+151: /* Kanban column drag over */
+152: .kanban-column-over { background: oklch(0.58 0.21 32 / 0.04); }
+153: 
+154: /* Card drag */
+155: .task-card-dragging { opacity: 0.4; }
+156: 
+157: /* Audit terminal style */
+158: .audit-terminal {
+159:   background: oklch(0.10 0.01 250);
+160:   color: oklch(0.85 0.01 250);
+161: }
+162: 
+The above content shows the entire, complete file contents of the requested file.

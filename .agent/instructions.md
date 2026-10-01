@@ -1,0 +1,2738 @@
+# SastraNet Workspace — Full-Stack Next.js Build Specification
+
+You are a senior staff-level full-stack engineer, product designer, UX engineer, database architect, security engineer, and frontend systems engineer.
+
+Your task is to build a **production-quality SastraNet internal workspace** from scratch as a full-stack Next.js application.
+
+This is **not** a prototype-only implementation. Build the actual application architecture, database model, authentication, authorization, API/server actions, interaction model, responsive UI, validation, audit trail, background workflows, and deployment configuration.
+
+The application must be designed to run cleanly on **Vercel** with **MongoDB Atlas** as the database and an external **n8n instance** for asynchronous workflow automation.
+
+---
+
+# 1. Primary Objective
+
+Build a workspace used by the SastraNet team to manage:
+
+* the current weekly sprint
+* the backlog
+* tasks and ownership
+* task severity
+* task checklists
+* pod/member organization
+* random product ideas
+* audit history
+* monthly peer feedback
+* feedback aggregation and distribution
+* future operational trackers
+
+The most important product principle is:
+
+> **The application should reduce management overhead rather than create another management system.**
+
+The UX must feel fast, lightweight, tactile, and obvious.
+
+Do not build Jira.
+
+Do not build Linear.
+
+Do not build an enterprise PM dashboard.
+
+Use the existing design language from the supplied SastraNet mockup as the visual source of truth.
+
+---
+
+# 2. Source of Truth for Visual Design
+
+A supplied HTML mockup is the design reference.
+
+Preserve its visual language rather than redesigning it.
+
+The existing design language consists of:
+
+* warm bone/sand application background
+* white editorial surfaces
+* deep almost-black typography
+* International Orange as the primary accent
+* large rounded cards
+* asymmetric editorial/Bento compositions
+* generous whitespace
+* Outfit for display typography
+* Plus Jakarta Sans for UI/body
+* JetBrains Mono for identifiers/data
+* restrained shadows
+* subtle borders
+* pill controls
+* dark audit-log/terminal surfaces
+* minimal iconography
+* strong but quiet hierarchy
+
+Do NOT replace this with:
+
+* generic SaaS blue dashboards
+* glassmorphism
+* gradients everywhere
+* excessive shadows
+* dense enterprise admin tables
+* excessive cards
+* huge iconography
+* generic Tailwind starter styling
+
+The implementation should look like the mockup evolved into a real product.
+
+---
+
+# 3. Current Product Model
+
+The application's central workflow is deliberately simple.
+
+```text
+BACKLOG
+   ↓
+CURRENT SPRINT
+   ├── TODO
+   ├── IN PROGRESS
+   └── DONE
+          ↓
+COMPLETED HISTORY
+```
+
+There should only be **one active sprint context**.
+
+Do NOT create separate pages for Sprint 1, Sprint 2, Sprint 3 etc.
+
+Do NOT create an archive browser for historical sprint boards.
+
+Do NOT force the user to navigate through previous sprints.
+
+Historical information is retained as task metadata.
+
+A completed task records the sprint in which it was completed.
+
+A task carried over retains its audit history.
+
+---
+
+# 4. Sprint Model
+
+A sprint is exactly one week.
+
+The UI should show:
+
+> **Current Sprint**
+> Sep 14–20
+
+Do not write “1 week”.
+
+The current sprint has:
+
+* `startDate`
+* `endDate`
+* `status`
+* tasks selected from backlog
+* sprint number/name
+* creation timestamp
+* completion timestamp
+
+The current sprint always represents the active working week.
+
+## Sprint transition
+
+At the end of the sprint:
+
+* completed tasks remain completed
+* unfinished tasks remain visible until explicitly carried over
+* previous sprint boards do not become separate views
+* historical sprint information remains attached to each task
+
+## Carry Over
+
+There is a button next to the current sprint:
+
+> **Carry Over**
+
+This action means:
+
+> Move every TODO and IN_PROGRESS task in the current sprint into the next sprint in one atomic operation.
+
+It must:
+
+1. identify every current-sprint task whose status is TODO or IN_PROGRESS
+2. assign the next sprint ID
+3. set deadline to the new sprint end date
+4. preserve task status
+5. preserve task audit history
+6. create an audit event for each affected task
+7. create one higher-level sprint transition event
+8. execute transactionally if possible
+
+The UI should show a confirmation before bulk carry-over.
+
+Example:
+
+> Carry over 8 unfinished tasks into Sprint 24?
+
+Buttons:
+
+* Cancel
+* Carry Over 8 Tasks
+
+Do not require users to carry tasks individually.
+
+---
+
+# 5. Task Model
+
+Every task must support:
+
+```ts
+Task {
+  id
+  displayNumber
+  title
+  description
+  status
+  severity
+  sprintId?
+  createdFrom
+  createdBy
+  primaryOwnerId?
+  assigneeIds[]
+  checklist[]
+  deadline?
+  completedAt?
+  completedSprintId?
+  createdAt
+  updatedAt
+  deletedAt?
+}
+```
+
+Use a human-friendly display number such as:
+
+> 930
+
+Not:
+
+> TASK-930
+
+The numeric identifier should be unique and monotonically increasing.
+
+The database may use MongoDB ObjectId/UUID internally.
+
+---
+
+# 6. Task Status
+
+Use exactly:
+
+```text
+TODO
+IN_PROGRESS
+DONE
+BACKLOG
+```
+
+Internally, BACKLOG can be represented by the absence of a sprint or by a dedicated lifecycle field. Prefer whichever model produces the cleanest domain logic.
+
+The UI should show:
+
+* To Do
+* In Progress
+* Done
+
+Backlog is visually separate below the Kanban.
+
+---
+
+# 7. Severity System
+
+Severity is not decorative tagging.
+
+It represents product/business urgency.
+
+Use:
+
+```text
+RED
+ORANGE
+YELLOW
+GREEN
+RANDOM_IDEA
+```
+
+Meaning:
+
+### RED
+
+Dangerous bug or missing feature where failure to fix it could cause competitors to steal users because they already offer the capability.
+
+### ORANGE
+
+Major bug causing heavy user discomfort, or a highly important feature where competitors could realistically catch up quickly.
+
+### YELLOW
+
+Causes user discomfort or represents a non-urgent improvement, but is not immediately competitive-risking.
+
+### GREEN
+
+Minor issue or low-impact improvement.
+
+### RANDOM_IDEA
+
+New idea that should be retained for future consideration rather than immediately committed.
+
+Important:
+
+Severity must be visually obvious.
+
+Use:
+
+* subtle colored accent border
+* severity pill
+* restrained visual glow only when useful
+
+Do not turn the entire UI into a rainbow.
+
+---
+
+# 8. Task Cards
+
+Task cards are central to the product.
+
+Cards must be draggable.
+
+Dragging a task between:
+
+* TODO
+* IN_PROGRESS
+* DONE
+
+must update the backend.
+
+A drag action should:
+
+1. optimistically update the UI
+2. call the server mutation
+3. create an audit event
+4. roll back the UI if the mutation fails
+
+Do not require a modal to change status.
+
+Dragging must feel immediate.
+
+---
+
+# 9. Checklist
+
+Use the name:
+
+> Checklist
+
+Do not call it:
+
+* Task checklist
+* Micro-checklist
+* Sub-task checklist
+
+A task can contain multiple checklist items.
+
+Example:
+
+```text
+Checklist
+
+☑ reproduce bug
+☑ identify API failure
+☐ add regression test
+☐ deploy fix
+```
+
+Checklist items should be interactively toggleable directly from the card where possible.
+
+Do not force opening the task modal for routine checkbox actions.
+
+Checklist updates must create lightweight audit events only when meaningful.
+
+---
+
+# 10. Deadline Model
+
+When a task moves from Backlog into the current sprint:
+
+> deadline defaults to the current sprint's end date
+
+A user can manually change the deadline afterward.
+
+A backlog task does not need a sprint deadline.
+
+When the current date passes the task deadline:
+
+* deadline text becomes RED
+* deadline is BOLD
+* optionally show a minimal overdue indicator
+
+Do not make overdue tasks scream visually.
+
+Example:
+
+Normal:
+
+`Sep 20`
+
+Overdue:
+
+`Sep 20`
+
+with red/bold styling.
+
+---
+
+# 11. Current Sprint Header
+
+The current sprint header should contain:
+
+* Current Sprint
+* date range
+* task count/compact metrics
+* Carry Over action
+* sprint-related controls
+
+Do NOT include:
+
+* "1 week"
+* historical reconstruction text
+* WhatsApp references
+* chat source references
+* “historical sprint reconstruction”
+* meaningless product-management explanation
+
+---
+
+# 12. Member Filtering
+
+Remove the old member dropdown.
+
+Add a horizontally scrollable member filter row.
+
+Example:
+
+```text
+All   Abhinav (3)   Daya (2)   Punith (4)   Akash (1)   ...
+```
+
+Each person's number should represent:
+
+> TODO + IN_PROGRESS tasks currently assigned to them.
+
+Clicking a member:
+
+* filters the Kanban
+* filters relevant open work
+* retains sprint context
+
+Clicking All:
+
+* removes the member filter
+
+The row should work beautifully on both desktop and mobile.
+
+Horizontal scrolling should not visibly expose an ugly scrollbar.
+
+---
+
+# 13. Dashboard Header
+
+Do not have an “Active Now” section.
+
+It is not useful.
+
+Replace that space with high-value work information such as:
+
+* Open Tasks
+* In Progress
+* Overdue
+* Backlog Size
+
+Use compact editorial metrics.
+
+No vanity metrics.
+
+---
+
+# 14. Backlog
+
+Backlog appears below the Kanban.
+
+Use a compact table, not a giant Kanban.
+
+Columns:
+
+* #
+* Task
+* Severity
+* Owner
+* Age
+* Created
+* Action
+
+Potential actions:
+
+* Add to sprint
+* Open
+* Delete
+
+The table header must contain:
+
+> **Add Task**
+
+This creates a task directly in Backlog.
+
+Backlog tasks should not automatically receive a sprint deadline.
+
+---
+
+# 15. Backlog Rust Mechanic
+
+Backlog items that remain untouched for more than 3 weeks should visually “rust”.
+
+A rusted item:
+
+* becomes muted
+* has reduced visual energy
+* optionally displays `23 days`
+* receives a subtle rust/muted treatment
+
+This mechanic should encourage the team to either:
+
+* promote the task
+* keep it consciously
+* delete it
+* explicitly defer it
+
+Do NOT automatically delete it.
+
+Rusting is a product signal, not an archival mechanism.
+
+The Rust preview belongs directly inside the Backlog UI.
+
+Do not put a separate "rust preview" section inside Random Ideas.
+
+---
+
+# 16. Completed Tasks
+
+At the bottom of the site, show all completed tasks from previous/current work as a compact table.
+
+Do NOT display them as historical Kanban boards.
+
+Suggested columns:
+
+* #
+* Task
+* Severity
+* Owner
+* Completed
+* Sprint
+
+This provides historical visibility without polluting the active workspace.
+
+---
+
+# 17. Random Ideas
+
+Create a dedicated Ideas view.
+
+The title should be:
+
+> Random Ideas
+
+Description:
+
+> A running list of ideas worth keeping until the team decides to build them.
+
+Do not mention:
+
+* WhatsApp
+* exports
+* historical reconstruction
+* chat-derived data
+* inferred chronology
+
+The user should feel like these ideas were captured natively in SastraNet.
+
+Ideas can be:
+
+* created instantly
+* promoted to backlog
+* deleted
+* opened for discussion
+
+When promoting an idea to a task:
+
+* create a new task
+* preserve idea origin metadata
+* create audit event
+* remove it from active idea list or mark it promoted
+
+---
+
+# 18. Audit Stream
+
+Every meaningful state-changing action should be auditable.
+
+Audit events include:
+
+* created task
+* task assigned
+* status changed
+* severity changed
+* checklist updated
+* deadline changed
+* moved into sprint
+* carried over
+* moved to backlog
+* pivoted
+* deleted
+* idea promoted
+* feedback submitted
+* reviewer changed
+* feedback finalized
+
+Do not log every microscopic UI interaction.
+
+An audit item should contain:
+
+```ts
+AuditEvent {
+  id
+  entityType
+  entityId
+  actorId
+  action
+  metadata
+  createdAt
+}
+```
+
+Render task-specific audit history in the dark terminal-style audit panel.
+
+---
+
+# 19. Pivot Reason
+
+If:
+
+* IN_PROGRESS → BACKLOG
+* TODO → BACKLOG
+* active task → deleted
+
+the user should be asked for a reason.
+
+However, the visible button should simply say:
+
+> Move to Backlog
+
+Do NOT write:
+
+> Move to Backlog + reason
+
+The reason is collected as part of the workflow.
+
+Use a lightweight reason dialog.
+
+The user should be able to enter a short reason.
+
+That reason becomes an audit event.
+
+Example:
+
+> Why are you moving this back to backlog?
+
+`Waiting for API access.`
+
+Audit:
+
+> Gautam moved #934 back to backlog
+> Reason: Waiting for API access.
+
+---
+
+# 20. Pods
+
+The Members page should be renamed:
+
+> Pods
+
+Do not expose any “current pod map” wording.
+
+Show:
+
+> Last edited Sep 13, 2026
+> Edit Pods
+
+The pod overview should contain:
+
+* pod name
+* pod lead
+* members
+* active task count
+* completed task count
+
+The visual pattern should be:
+
+```text
+Siddharth's pod
+
+LEAD
+Siddharth
+
+Members
+Anoohya
+Vinay
+```
+
+Do not show:
+
+> Pod Lead • Core • 2 current pod members
+
+Do not put a meaningless:
+
+> Pod
+
+tag inside member cards.
+
+The pod itself is the grouping.
+
+Use the actual pod structure from the supplied team context.
+
+---
+
+# 21. Pod Editing
+
+Create a small pod-management interface for authorized leads.
+
+Actions:
+
+* rename pod
+* change pod lead
+* add member
+* remove member
+* move member between pods
+
+Every structural change creates an audit event.
+
+Show:
+
+> Last edited Sep 13, 2026
+
+The edit control should not dominate the UI.
+
+---
+
+# 22. Feedback System
+
+Build a dedicated Feedback area.
+
+The feedback workflow has three main screens/states:
+
+```text
+1. Choose Reviewers
+2. Write Feedback
+3. Review Final Feedback
+```
+
+No separate "nudge" workflow is required.
+
+No "replace reviewer" button should be exposed casually.
+
+No "Save Draft" button.
+
+Autosave is automatic.
+
+---
+
+# 23. Feedback Hierarchy
+
+The team structure is:
+
+```text
+Lead
+  ↓
+Pod Leads
+  ↓
+Members
+```
+
+Feedback may be requested for a teammate.
+
+Exactly five reviewers should normally be selected.
+
+The lead can select the five reviewers.
+
+Show reviewer selection with:
+
+* avatar
+* name
+* pod
+* relationship to recipient
+* selected state
+
+Use a clear 5/5 counter.
+
+Example:
+
+> Select reviewers
+> 3 of 5 selected
+
+Do not allow submission of the review request until the required reviewer count is reached.
+
+---
+
+# 24. Feedback Reviewer Selection UX
+
+The reviewer selector must consider:
+
+* same pod
+* cross-pod collaboration
+* direct collaborators
+* recent task interaction
+* lead recommendation
+
+The system can suggest reviewers.
+
+But the lead remains in control.
+
+Recommended reviewer metadata can be calculated from:
+
+* shared tasks
+* shared audit events
+* same pod
+* collaboration frequency
+
+Do not create an opaque AI reviewer-selection system.
+
+Keep the recommendation understandable.
+
+---
+
+# 25. Feedback Writing Screen
+
+The reviewer sees:
+
+### Performance Impact
+
+Questions about:
+
+* effectiveness
+* impact
+
+### Strengths
+
+Prompt:
+
+> What skills and competencies differentiate your teammate from others in the team?
+
+Prompt:
+
+> What tasks did your teammate excel at? Why and how did they excel?
+
+Require:
+
+> 1–3 top strengths
+
+### Development Areas
+
+Prompt:
+
+> What skills or competencies could your teammate build on to increase their effectiveness or impact?
+
+Prompt:
+
+> Which areas of expertise could they further develop to support their time at SastraNet?
+
+Require:
+
+> 1–3 top development areas
+
+Each development area should encourage the AIM format:
+
+* Action
+* Impact
+* Measure
+
+---
+
+# 26. Feedback Ratings
+
+Do not use dropdowns.
+
+Use five selectable circles:
+
+```text
+○ ○ ○ ○ ○
+1 2 3 4 5
+```
+
+Rating 1–5:
+
+> Strongly Disagree → Strongly Agree
+
+Two required ratings:
+
+### Effectiveness & Impact
+
+> This teammate is effective and creates meaningful impact in their work.
+
+### Culture
+
+> This teammate is supportive, kind, and actively brings the SastraNet culture forward.
+
+Use large enough hit targets for desktop and mobile.
+
+Selected circle should use the brand orange.
+
+---
+
+# 27. Feedback Autosave
+
+Autosave every meaningful change.
+
+Do not show a Save Draft button.
+
+Display subtle status:
+
+> Saved just now
+
+or:
+
+> Saving…
+
+or:
+
+> Offline — changes will sync when connected
+
+The backend should use debounced writes where appropriate.
+
+---
+
+# 28. Feedback Completion / Waiting State
+
+When a feedback cycle has five reviewers:
+
+Show:
+
+```text
+3 / 5 submitted
+
+✓ Abhinav
+✓ Daya
+✓ Akash
+○ Punith
+○ Vinay
+```
+
+The lead should be able to see completion status.
+
+Do not show “Nudge pending reviewers”.
+
+The system can send automated reminders through n8n without exposing reminder-management UI.
+
+---
+
+# 29. Feedback Final Screen
+
+Once all reviewers have submitted:
+
+Display:
+
+* completion state
+* aggregate ratings
+* individual reviewer comments where appropriate
+* strengths
+* development themes
+* optional AI summary
+
+The lead can:
+
+> Finalize Feedback
+
+Finalization should freeze the feedback cycle.
+
+After finalization:
+
+* final output can be sent to the requester
+* final output can be sent to the person's pod lead
+
+These deliveries should use n8n.
+
+---
+
+# 30. AI Summary
+
+AI summarization is optional.
+
+Never make AI summary a hard dependency of the core feedback system.
+
+If AI summary is enabled:
+
+Input:
+
+* reviewer feedback
+* ratings
+* strengths
+* development areas
+
+Output:
+
+* concise summary
+* top strengths
+* key development themes
+* balanced tone
+* no invented claims
+* no fabricated examples
+
+AI-generated content must be visibly marked as AI-assisted until finalized.
+
+Use a server-side model/API provider.
+
+Do not expose model keys to the client.
+
+---
+
+# 31. Culture
+
+The team culture should eventually become a first-class product artifact.
+
+Create a placeholder configuration/data model for:
+
+* culture principles
+* behavioral expectations
+* values
+* examples
+
+Do not invent new culture values beyond the supplied source material unless explicitly configured by a lead.
+
+The existing team source describes:
+
+* horizontal teamwork
+* self-assigned responsibility
+* constructive continuous feedback
+* kindness
+* inclusivity
+* attention to detail
+* respectful collaboration
+* testing/data/dialogue for resolving disagreements
+
+Treat these as seed data, not hard-coded UI copy.
+
+---
+
+# 32. Authentication
+
+Implement authentication with an **email allowlist**.
+
+Users must not be able to freely register.
+
+The application should reject users whose email is not in the allowlist.
+
+Use Better Auth with MongoDB.
+
+Use the MongoDB adapter.
+
+Enforce the allowlist through an auth hook / server-side authorization boundary rather than trusting frontend logic.
+
+Important:
+
+Authentication and authorization must be separated.
+
+Example roles:
+
+```text
+ADMIN
+LEAD
+POD_LEAD
+MEMBER
+```
+
+Do not allow a user to select their own role.
+
+Roles are controlled server-side.
+
+---
+
+# 33. Recommended Auth Behavior
+
+Login page:
+
+```text
+SastraNet
+
+Sign in to Workspace
+
+Email
+Password
+
+Sign in
+```
+
+If using passwordless magic links instead is materially better for the actual environment, you may choose that, but the implementation should still honor the email allowlist.
+
+The UI should feel native to the SastraNet design system.
+
+Unauthorized user:
+
+> This account isn't part of the SastraNet workspace.
+
+Do not expose whether an email exists in the allowlist.
+
+---
+
+# 34. Database
+
+Use MongoDB Atlas.
+
+Use the official MongoDB Node.js driver.
+
+Use a single reusable MongoClient.
+
+Store the connection URI in:
+
+```env
+MONGODB_URI=
+```
+
+Never expose it to the client.
+
+Never use:
+
+```env
+NEXT_PUBLIC_MONGODB_URI
+```
+
+Use indexes based on real query patterns rather than indexing everything.
+
+Recommended collections:
+
+```text
+users
+sessions
+accounts
+verification
+sprints
+tasks
+ideas
+pods
+auditEvents
+feedbackCycles
+feedbackResponses
+culture
+settings
+```
+
+Depending on Better Auth's generated model requirements, use its required auth collections.
+
+---
+
+# 35. Database Modeling Principles
+
+Prefer references between major entities.
+
+Tasks should reference:
+
+* sprint ID
+* creator
+* owner
+* assignees
+
+Do not duplicate large user objects in tasks.
+
+For audit events, denormalized display metadata may be acceptable where it materially improves historical readability.
+
+Use:
+
+* unique indexes where required
+* compound indexes for active-work queries
+* createdAt / updatedAt indexes where appropriate
+
+Example useful indexes:
+
+```text
+tasks:
+  { sprintId: 1, status: 1 }
+  { assigneeIds: 1, status: 1 }
+  { deadline: 1 }
+  { severity: 1, status: 1 }
+
+auditEvents:
+  { entityType: 1, entityId: 1, createdAt: -1 }
+
+ideas:
+  { status: 1, createdAt: -1 }
+```
+
+Do not create excessive indexes.
+
+---
+
+# 36. Transactional Operations
+
+Operations that change multiple related records should use MongoDB transactions when appropriate.
+
+Especially:
+
+### Carry Over Sprint
+
+Must update:
+
+* sprint state
+* affected tasks
+* audit events
+
+atomically where possible.
+
+### Feedback Finalization
+
+Must ensure:
+
+* all required reviewer responses exist
+* cycle transitions to finalized
+* audit event exists
+
+Use transactions where the application's MongoDB deployment supports them.
+
+---
+
+# 37. API / Server Architecture
+
+Use the Next.js App Router.
+
+Prefer:
+
+* Server Components for data-heavy read paths
+* Server Actions for mutations where appropriate
+* Route Handlers for webhooks, n8n callbacks, cron endpoints, and externally invoked APIs
+
+Do not create a giant REST layer merely for stylistic consistency.
+
+Do not put MongoDB calls in arbitrary client components.
+
+Use a service/repository layer.
+
+Suggested organization:
+
+```text
+src/
+  app/
+    (auth)/
+    (workspace)/
+      page.tsx
+      ideas/
+      members/
+      feedback/
+      settings/
+    api/
+      auth/
+      n8n/
+      cron/
+  components/
+  features/
+    board/
+    tasks/
+    backlog/
+    ideas/
+    pods/
+    feedback/
+    audit/
+  lib/
+    db/
+    auth/
+    n8n/
+    permissions/
+    validation/
+    dates/
+  server/
+    actions/
+    services/
+    repositories/
+  types/
+```
+
+Do not use a monolithic `utils.ts`.
+
+---
+
+# 38. Next.js 16
+
+Use current stable Next.js.
+
+Prefer Next.js 16 patterns.
+
+Use:
+
+* App Router
+* React Server Components
+* Server Actions
+* `proxy.ts` where request interception is needed
+* Cache Components / `use cache` selectively where useful
+
+Do not blindly cache MongoDB-backed live task data.
+
+The current sprint board needs fresh data.
+
+Use caching only for appropriate stable/read-mostly content.
+
+Do not use obsolete `unstable_cache` patterns where Next.js 16's current cache APIs are preferable.
+
+---
+
+# 39. Vercel
+
+The application is deployed to Vercel.
+
+Use Vercel-native capabilities where they improve the architecture.
+
+Use:
+
+* Vercel Functions
+* Fluid Compute
+* environment variables
+* cron jobs where useful
+* Vercel deployment previews
+* system environment variables where useful
+
+Do not add infrastructure that Vercel already handles.
+
+---
+
+# 40. Vercel Cron Jobs
+
+Potential cron jobs:
+
+### Sprint rollover preparation
+
+A daily job can:
+
+* detect whether current sprint is ending
+* prepare the next sprint
+* flag unfinished tasks
+* optionally generate a digest
+
+### Rust detection
+
+A daily job can update derived rust metadata if this is not calculated dynamically.
+
+### Feedback cycle reminders
+
+A daily cron can identify incomplete feedback cycles and dispatch reminders through n8n.
+
+Do not require Vercel Cron if the same workflow is more appropriate in n8n.
+
+Use the simplest reliable architecture.
+
+Remember that Vercel Cron executes production deployments, and scheduling characteristics depend on the Vercel plan.
+
+---
+
+# 41. n8n Integration
+
+n8n base URL:
+
+```text
+https://sastranet-automation.baari.dev/
+```
+
+Treat n8n as the asynchronous automation layer.
+
+Possible workflows:
+
+### Feedback email
+
+Next.js → n8n webhook → email reviewers
+
+### Feedback completion
+
+Next.js → n8n → notify requester/pod lead
+
+### Reviewer reminder
+
+Cron → n8n → reminder email
+
+### AI summary
+
+Next.js → n8n or directly to AI provider, depending on the final architecture
+
+### Operational workflows
+
+Future workflows can send:
+
+* Slack/Discord messages
+* email
+* webhook events
+* recruitment notifications
+* reports
+
+The core application must continue working if n8n is temporarily unavailable.
+
+Do not make task mutation depend synchronously on n8n.
+
+Use an event/outbox-style approach where practical.
+
+---
+
+# 42. n8n Security
+
+Create:
+
+```env
+N8N_BASE_URL=https://sastranet-automation.baari.dev
+N8N_WEBHOOK_SECRET=
+```
+
+Never expose private webhook secrets to the client.
+
+Validate signed/authenticated callbacks.
+
+Do not trust arbitrary requests to internal n8n routes.
+
+---
+
+# 43. Frontend Stack
+
+Use current, production-grade libraries.
+
+Recommended:
+
+* Next.js 16
+* React 19.2
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* Lucide icons
+* Zod
+* Better Auth
+* MongoDB official driver
+* a lightweight client-state/data layer only where actually needed
+
+For drag-and-drop:
+
+Use a current, maintained drag-and-drop library appropriate for React 19 / Next.js 16.
+
+Prefer an actively maintained library over an abandoned package.
+
+Do not build low-level pointer mechanics from scratch unless there is a compelling reason.
+
+---
+
+# 44. Forms
+
+Use:
+
+* React Server Actions where appropriate
+* Zod validation
+* controlled form inputs only where needed
+* progressive enhancement where practical
+
+All server mutations must validate input server-side.
+
+Never trust client-side validation.
+
+---
+
+# 45. Design System
+
+Create centralized design tokens.
+
+Do not scatter arbitrary colors throughout components.
+
+Define tokens for:
+
+```text
+canvas
+surface
+ink
+inkMuted
+border
+brand
+severity.red
+severity.orange
+severity.yellow
+severity.green
+severity.random
+status.todo
+status.progress
+status.done
+```
+
+Maintain the existing aesthetic.
+
+---
+
+# 46. Typography
+
+Use:
+
+### Display
+
+Outfit
+
+### UI/body
+
+Plus Jakarta Sans
+
+### Data/code
+
+JetBrains Mono
+
+Do not use ten different font families.
+
+Typography should create hierarchy rather than decoration.
+
+---
+
+# 47. Layout Principles
+
+Follow these principles:
+
+1. Large whitespace around major sections.
+2. Compact controls.
+3. Dense information only where density is useful.
+4. Use alignment to create rhythm.
+5. Use cards sparingly.
+6. Use color semantically.
+7. Preserve tactile interactions.
+8. Prefer inline actions over modal workflows.
+9. Avoid unnecessary navigation.
+10. Every visible UI element should justify its presence.
+
+---
+
+# 48. Responsive Design
+
+Must work well at:
+
+* 360px
+* 390px
+* 430px
+* tablet
+* 1024px
+* 1280px
+* 1440px+
+
+Desktop:
+
+* Kanban columns side-by-side.
+
+Mobile:
+
+* horizontally scrollable Kanban if necessary
+* compact member filter
+* backlog table becomes horizontally scrollable or card-table hybrid
+* task detail uses full-screen sheet/modal
+* navigation collapses elegantly
+
+Do not simply shrink desktop.
+
+Design for mobile intentionally.
+
+---
+
+# 49. Interactions
+
+Interactions should feel fast.
+
+Use optimistic UI for:
+
+* checklist toggles
+* task status movement
+* member filter
+* severity changes
+
+Use subtle animations:
+
+* card lift
+* selection transitions
+* toast entrance
+* modal scale/fade
+
+Do not animate everything.
+
+Respect:
+
+```css
+prefers-reduced-motion
+```
+
+---
+
+# 50. Task Detail
+
+Task detail should contain:
+
+Left/main area:
+
+* task number
+* title
+* severity
+* status
+* deadline
+* sprint
+* owners
+* checklist
+* description
+
+Right area:
+
+* audit stream
+
+Desktop should preserve the editorial split-screen feel from the mockup.
+
+Mobile should stack:
+
+1. task details
+2. audit stream
+
+---
+
+# 51. Search
+
+Global task search should support:
+
+* task number
+* title
+* owner
+* assignee
+* severity
+
+Search should be fast.
+
+Do server-side search where the dataset demands it.
+
+Do not load thousands of tasks to the browser just to filter them.
+
+---
+
+# 52. Authorization
+
+Permission matrix:
+
+### MEMBER
+
+Can:
+
+* create tasks
+* update assigned tasks
+* add ideas
+* update own task fields
+* participate in feedback
+
+### POD_LEAD
+
+Can additionally:
+
+* manage pod assignments
+* view pod members
+* manage pod tasks
+* participate in review administration
+
+### LEAD
+
+Can additionally:
+
+* manage current sprint
+* carry over tasks
+* manage feedback cycles
+* select reviewers
+* manage pod structure
+* edit culture
+
+### ADMIN
+
+Can additionally:
+
+* manage allowlist
+* manage users
+* manage system settings
+* inspect audit logs
+* configure integrations
+
+Enforce every permission server-side.
+
+Never rely on hidden buttons as authorization.
+
+---
+
+# 53. Email Allowlist
+
+Create an allowlist data model or configuration.
+
+Support exact emails.
+
+Potential future support:
+
+```text
+domain allowlist
+role assignment
+active/inactive
+```
+
+Example:
+
+```ts
+AllowedUser {
+  email
+  role
+  active
+  createdAt
+  createdBy
+}
+```
+
+A signup/login flow must reject unauthorized addresses.
+
+Do not leak whether another email is authorized.
+
+---
+
+# 54. Error Handling
+
+Every mutation must have proper failure states.
+
+Examples:
+
+* network failure
+* database failure
+* authorization failure
+* validation failure
+* n8n failure
+* duplicate operation
+* stale task state
+
+UI should show concise messages.
+
+Example:
+
+> Couldn’t move #934. Please try again.
+
+Do not expose stack traces.
+
+---
+
+# 55. Concurrency
+
+Assume two people can edit the same task.
+
+Implement reasonable protection against overwriting changes.
+
+For example:
+
+* updatedAt/version comparison
+* atomic MongoDB operations
+* optimistic concurrency
+
+If a stale mutation occurs:
+
+> This task changed while you were editing it.
+
+Allow refresh/retry.
+
+---
+
+# 56. Observability
+
+Add production-safe logging.
+
+Do not log:
+
+* passwords
+* auth tokens
+* MongoDB URI
+* sensitive feedback content unnecessarily
+
+Log:
+
+* request identifiers
+* mutation type
+* task ID
+* user ID
+* error code
+* duration
+
+Integrate with Vercel's logs cleanly.
+
+Provide an abstraction so Sentry/Datadog can be added later without rewriting business logic.
+
+---
+
+# 57. Accessibility
+
+Target strong WCAG compliance.
+
+Requirements:
+
+* keyboard navigation
+* visible focus states
+* semantic buttons
+* aria labels where necessary
+* sufficient contrast
+* keyboard-accessible drag alternatives
+* accessible dialogs
+* accessible rating controls
+* screen-reader friendly status updates
+
+Do not make drag-and-drop the only way to change status.
+
+Provide an accessible alternative.
+
+---
+
+# 58. Security
+
+Follow these rules aggressively:
+
+* secrets only on server
+* no MongoDB URI in client bundle
+* no `NEXT_PUBLIC_` prefix on secrets
+* validate all input
+* server-side authorization
+* CSRF protections appropriate to chosen auth architecture
+* secure cookies
+* rate limiting on auth-sensitive endpoints
+* webhook signature validation
+* no raw error leakage
+* no unrestricted MongoDB query construction from user input
+* prevent HTML/script injection in task descriptions
+* sanitize rendered markdown if markdown is supported
+
+Use environment variables for all sensitive credentials.
+
+---
+
+# 59. Environment Variables
+
+Create `.env.example` with placeholders only:
+
+```env
+MONGODB_URI=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+N8N_BASE_URL=https://sastranet-automation.baari.dev
+N8N_WEBHOOK_SECRET=
+
+# Optional AI integration
+AI_API_KEY=
+
+# Optional observability
+SENTRY_DSN=
+```
+
+Never include real secret values.
+
+The provided MongoDB URI must only be placed manually into the local/Vercel environment configuration.
+
+---
+
+# 60. Seed Data
+
+Provide a deterministic seed script.
+
+Seed:
+
+* lead
+* pod leads
+* team members
+* current sprint
+* representative tasks
+* backlog tasks
+* ideas
+* pods
+* sample feedback cycle
+
+Seed data should reflect the SastraNet workspace structure from the provided product context.
+
+Do not seed fake WhatsApp metadata.
+
+Do not display “historical reconstruction”.
+
+---
+
+# 61. Testing
+
+Use automated tests.
+
+At minimum:
+
+### Unit tests
+
+* severity rules
+* sprint logic
+* carry-over logic
+* rust calculation
+* permissions
+* feedback completion logic
+* deadline logic
+
+### Integration tests
+
+* MongoDB operations
+* auth allowlist
+* task mutations
+* carry over
+* feedback lifecycle
+* n8n webhook behavior
+
+### E2E
+
+Use Playwright.
+
+Test:
+
+1. login
+2. unauthorized login
+3. task creation
+4. backlog → sprint
+5. drag TODO → IN_PROGRESS
+6. checklist update
+7. carry over
+8. overdue task
+9. rusted backlog item
+10. feedback reviewer selection
+11. feedback submission
+12. final feedback
+13. pod editing
+
+---
+
+# 62. Data Integrity Tests
+
+Verify:
+
+* one current sprint
+* exactly five reviewers when finalized
+* no duplicate reviewer
+* no task assigned to nonexistent user
+* completed tasks have completion timestamp
+* carried-over tasks get new sprint deadline
+* backlog tasks have no current sprint deadline
+* severity is always valid
+* task numbers are unique
+
+---
+
+# 63. Performance
+
+Optimize for:
+
+* fast first render
+* low client JavaScript
+* minimal unnecessary hydration
+* efficient MongoDB queries
+* indexed task queries
+* optimistic interactions
+* streaming/Suspense where useful
+* selective caching
+
+Use Server Components by default.
+
+Only add `"use client"` when necessary.
+
+Do not convert entire pages into client components.
+
+Use Next.js 16 caching primitives deliberately rather than indiscriminately.
+
+---
+
+# 64. Component Architecture
+
+Avoid giant components.
+
+Example:
+
+```text
+components/
+  app-shell/
+  navigation/
+  sprint/
+    sprint-header
+    carry-over-dialog
+  board/
+    kanban-board
+    kanban-column
+    task-card
+    task-checklist
+  backlog/
+    backlog-table
+    backlog-row
+  ideas/
+    idea-card
+    ideas-list
+  pods/
+    pod-card
+    member-card
+    edit-pods-dialog
+  feedback/
+    reviewer-selector
+    feedback-form
+    feedback-ratings
+    feedback-progress
+    feedback-final
+  audit/
+    audit-stream
+```
+
+Each feature should own its logic as much as possible.
+
+---
+
+# 65. Business Logic Boundaries
+
+Do not put business rules inside React JSX.
+
+For example:
+
+Bad:
+
+```tsx
+if (task.status === "TODO" && ...)
+```
+
+repeated in multiple components.
+
+Instead:
+
+```ts
+canCarryOverTask(task)
+isTaskOverdue(task)
+shouldRustBacklogItem(task)
+canManagePods(user)
+canFinalizeFeedback(cycle)
+```
+
+Put domain logic in shared server-safe modules.
+
+---
+
+# 66. Date Handling
+
+Use a robust date library only if necessary.
+
+All persisted dates should be timezone-safe.
+
+The UI should use the team's configured timezone:
+
+```text
+Asia/Kolkata
+```
+
+The database should store actual timestamps consistently.
+
+Sprint boundaries should be computed explicitly.
+
+Avoid browser-local date bugs.
+
+---
+
+# 67. Mobile UX
+
+On mobile:
+
+* top navigation becomes compact
+* member filter is horizontal scroll
+* board remains usable with horizontal swipe
+* task detail becomes a full-screen sheet
+* backlog becomes horizontally scrollable
+* feedback is optimized for thumb interaction
+* rating circles are large
+* buttons have at least comfortable touch targets
+
+---
+
+# 68. Visual QA
+
+Before considering the implementation complete:
+
+Compare the real application against the supplied HTML mockup.
+
+Check:
+
+* typography
+* spacing
+* card radius
+* border colors
+* shadows
+* orange accent
+* severity presentation
+* navigation shape
+* task card proportions
+* audit stream appearance
+* mobile responsiveness
+
+Do not gradually drift into generic shadcn styling.
+
+shadcn/ui should provide primitives.
+
+The SastraNet design system remains the visual authority.
+
+---
+
+# 69. Product Copy
+
+Use clean product language.
+
+Good:
+
+> Current Sprint
+> Backlog
+> Random Ideas
+> Carry Over
+> Checklist
+> Move to Backlog
+> Pods
+> Feedback
+
+Avoid:
+
+> Sprint context reconstruction
+
+> Historical sprint inference
+
+> WhatsApp-derived data
+
+> AI reconstructed task
+
+> Metadata archaeology
+
+The end user should never know how the initial prototype data was assembled.
+
+---
+
+# 70. Future Trackers
+
+The original product concept includes operational Trackers.
+
+Do not fully build Trackers yet.
+
+However, architect the navigation and data model so a future Trackers feature can be added without restructuring the application.
+
+Possible future entities:
+
+```text
+Tracker
+TrackerColumn
+TrackerRow
+TrackerView
+```
+
+Do not waste implementation time building the whole feature now.
+
+---
+
+# 71. Future Sastranet Integrations
+
+Architect for future support of:
+
+* GitLab
+* GitHub
+* n8n
+* email
+* Discord
+* Slack
+* Google Forms
+* analytics
+* deployment events
+
+Use event-oriented architecture where useful.
+
+Do not couple task logic directly to third-party integrations.
+
+---
+
+# 72. Build Quality Requirements
+
+The finished project must include:
+
+* strict TypeScript
+* ESLint
+* formatting
+* clean import structure
+* no `any` unless absolutely justified
+* no dead code
+* no console debugging
+* no hardcoded secrets
+* no fake API responses in production code
+* no giant single-file page implementation
+* no duplicated business logic
+* no inaccessible interactive elements
+
+---
+
+# 73. Documentation
+
+Create:
+
+```text
+README.md
+ARCHITECTURE.md
+DATABASE.md
+AUTH.md
+DEPLOYMENT.md
+N8N.md
+```
+
+README should explain:
+
+* local setup
+* environment variables
+* seed data
+* development scripts
+* testing
+* Vercel deployment
+
+ARCHITECTURE should explain:
+
+* App Router
+* server/client boundaries
+* domain layer
+* database layer
+* auth
+* caching
+* n8n
+
+DATABASE should explain collections and indexes.
+
+AUTH should explain allowlist/roles.
+
+DEPLOYMENT should explain Vercel environment configuration.
+
+N8N should explain required webhook contracts.
+
+---
+
+# 74. Deployment
+
+Application must be deployable on Vercel without manual server provisioning.
+
+Use:
+
+```text
+Vercel
+MongoDB Atlas
+n8n
+```
+
+No custom Node server.
+
+No Docker requirement.
+
+No long-running process requirement.
+
+Set the correct Node.js runtime.
+
+Use Vercel environment variables.
+
+Use preview environments for testing.
+
+Do not expose production secrets in preview unless explicitly configured.
+
+---
+
+# 75. Initial Routes
+
+Implement approximately:
+
+```text
+/login
+
+/
+/ideas
+/pods
+/feedback
+
+/feedback/[cycleId]
+
+/tasks/[taskId]
+
+/settings
+/settings/access
+/settings/pods
+/settings/culture
+/settings/integrations
+
+/api/auth/[...all]
+/api/n8n/*
+/api/cron/*
+```
+
+Keep routes clean and semantic.
+
+---
+
+# 76. Homepage Structure
+
+The homepage should visually follow:
+
+```text
+Floating navigation
+
+↓
+
+Hero / workspace header
+
+  Current Sprint
+  Sep 14–20
+  Carry Over
+
+  Search
+  Member filter row
+
+↓
+
+Kanban
+
+  TODO
+  IN PROGRESS
+  DONE
+
+↓
+
+Backlog
+
+↓
+
+Completed
+```
+
+Do not add unnecessary dashboard sections.
+
+The homepage is a working surface, not an analytics dashboard.
+
+---
+
+# 77. Hero Copy
+
+Use:
+
+> **Let's Do The Impossible Together**
+
+Secondary copy should be brief.
+
+Do not use:
+
+> Work the week. Keep the backlog honest. Preserve the why.
+
+---
+
+# 78. Navigation
+
+Primary navigation:
+
+```text
+SastraNet
+Board
+Pods
+Ideas
+Feedback
+```
+
+Potential later:
+
+```text
+Trackers
+```
+
+Keep the navigation compact.
+
+Use the current floating pill navigation aesthetic from the mockup.
+
+---
+
+# 79. Task Creation UX
+
+The Add button should open a compact creation surface.
+
+Required:
+
+* title
+* severity
+* owner
+* status/destination
+
+Optional:
+
+* description
+* checklist
+* deadline
+
+If created as Backlog:
+
+* no sprint deadline
+
+If added directly to current sprint:
+
+* deadline defaults to sprint end
+
+---
+
+# 80. Board Add Task
+
+The main Add button should support:
+
+```text
+Add to Current Sprint
+Add to Backlog
+```
+
+But avoid an overcomplicated command menu.
+
+A compact selection is enough.
+
+---
+
+# 81. Accessibility of Dragging
+
+Dragging is optional convenience.
+
+Every task must also support a keyboard-accessible:
+
+> Change status
+
+control.
+
+Possible options:
+
+```text
+To Do
+In Progress
+Done
+```
+
+The drag system must never make the product inaccessible.
+
+---
+
+# 82. Random Idea Creation
+
+Ideas should be capturable extremely quickly.
+
+Example:
+
+```text
+Got a spark?
+
+Type something brilliant...
+```
+
+Enter submits.
+
+No multi-field creation form.
+
+This is deliberately frictionless.
+
+---
+
+# 83. Idea Promotion
+
+Promote idea:
+
+```text
+Idea
+  ↓
+Create Backlog Task
+```
+
+Do not immediately force it into the sprint.
+
+The promotion action should create:
+
+* task
+* sourceIdeaId
+* audit event
+
+---
+
+# 84. Rust Logic
+
+Define:
+
+```ts
+const RUST_THRESHOLD_DAYS = 21
+```
+
+Rust should be computed from meaningful inactivity/age semantics.
+
+Prefer:
+
+> age since last meaningful state transition
+
+rather than blindly using creation date if the product model supports that distinction.
+
+A task touched yesterday should not visually rust merely because it was created three weeks ago.
+
+---
+
+# 85. Audit Philosophy
+
+The audit stream exists to preserve:
+
+> **Why**
+
+It should answer:
+
+* Who changed it?
+* What changed?
+* When?
+* Why?
+
+Do not make it a telemetry firehose.
+
+---
+
+# 86. Feedback Philosophy
+
+Feedback should feel developmental, not bureaucratic.
+
+The user should understand:
+
+* what they did well
+* where they create impact
+* where they can improve
+* what behaviors differentiate them
+
+Avoid:
+
+* corporate performance-review jargon
+* giant HR dashboards
+* repetitive forms
+* excessive dropdowns
+
+---
+
+# 87. AI Feedback Summary Philosophy
+
+The AI must:
+
+* summarize, not invent
+* preserve reviewer intent
+* identify repeated themes
+* avoid over-weighting one reviewer
+* distinguish fact from interpretation
+* avoid diagnosing people
+* avoid hostile language
+* avoid generic praise
+
+---
+
+# 88. n8n Event Contract
+
+Build a typed integration layer.
+
+Example:
+
+```ts
+sendN8nEvent({
+  type: "feedback.review_requested",
+  payload: {...}
+})
+```
+
+Events:
+
+```text
+feedback.review_requested
+feedback.all_submitted
+feedback.finalized
+sprint.carry_over
+task.overdue
+task.created
+```
+
+The integration must support retries.
+
+---
+
+# 89. Idempotency
+
+External events and critical mutations should be idempotent.
+
+Example:
+
+Calling carry-over twice must not:
+
+* duplicate tasks
+* duplicate reviewer requests
+* duplicate audit records unnecessarily
+
+Use idempotency keys where meaningful.
+
+---
+
+# 90. Final Acceptance Criteria
+
+The application is complete only when:
+
+### Product
+
+* current sprint is the central working surface
+* backlog is directly below it
+* completed work is shown compactly
+* task cards are draggable
+* member filter works
+* carry over works in one action
+* rust works in backlog
+* deadlines become red/bold when overdue
+* Pods work
+* Ideas work
+* Feedback works end-to-end
+
+### Backend
+
+* MongoDB persists real state
+* auth is enforced
+* allowlist works
+* permissions work
+* audit history works
+* transactions protect critical operations
+* n8n integration works
+* errors are handled gracefully
+
+### Frontend
+
+* matches the supplied design
+* responsive
+* accessible
+* performant
+* polished
+* no placeholder functionality
+
+### Deployment
+
+* production builds successfully
+* Vercel deployment works
+* environment variables are correctly separated
+* no secrets are committed
+* MongoDB connectivity works
+* n8n connectivity works
+
+---
+
+# 91. Implementation Strategy
+
+Do not attempt to generate the entire project in a single giant unverified patch.
+
+Implement in vertical slices.
+
+Recommended order:
+
+1. project scaffold
+2. design system
+3. MongoDB connection
+4. auth + allowlist
+5. user/pod model
+6. current sprint model
+7. task CRUD
+8. Kanban + drag/drop
+9. checklist
+10. backlog + rust
+11. completed history
+12. audit system
+13. ideas
+14. Pods
+15. feedback
+16. n8n
+17. cron/automation
+18. testing
+19. accessibility
+20. performance
+21. Vercel deployment
+22. visual QA
+
+After each slice:
+
+* run typecheck
+* run lint
+* run tests
+* verify build
+* verify the UI manually
+
+Do not move forward while architectural errors are unresolved.
+
+---
+
+# 92. Critical Instruction
+
+Do not blindly obey the previous prototype implementation.
+
+Treat the following as the product truth:
+
+* current sprint, not historical sprint navigation
+* backlog is a first-class working list
+* completed history is compact
+* carry-over is bulk
+* member filtering is direct
+* cards are draggable
+* deadlines default to sprint end
+* overdue dates become red/bold
+* rust belongs in backlog
+* Pods are the organizational view
+* Feedback has three real stages
+* autosave exists
+* five reviewers are required
+* n8n handles asynchronous workflows
+* authentication is allowlist-based
+* the product should remain lightweight
+
+When a technical decision conflicts with these product principles, preserve the product behavior and explain the tradeoff.
+
+---
+
+# 93. Security Instruction
+
+The MongoDB credential supplied separately by the user is sensitive.
+
+Never print it in source files.
+
+Never put it in a code block.
+
+Never place it in `.env.example`.
+
+Never put it in client-side code.
+
+Use:
+
+```env
+MONGODB_URI=
+```
+
+and instruct the operator to populate it privately in local/Vercel environments.
+
+Also ensure the production database credential is rotated before production deployment if it has been exposed outside a secure secret store.
+
+---
+
+# 94. Deliverable
+
+Produce a complete production-ready Next.js application, not a static mockup.
+
+Include:
+
+* all source code
+* MongoDB integration
+* authentication
+* authorization
+* database models
+* seed scripts
+* API/server actions
+* audit trail
+* feedback workflow
+* n8n integration
+* tests
+* documentation
+* Vercel configuration
+* `.env.example`
+
+The final result should feel like:
+
+> **SastraNet built its own internal operating system for working together.**
+
+It should be technically serious underneath, but feel remarkably simple to the person using it.
